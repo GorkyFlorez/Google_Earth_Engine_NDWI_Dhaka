@@ -1,0 +1,97 @@
+---
+title: "Índice de agua de diferencia normalizada Sentinel-2 (NDWI)"
+author: "Gorky Florez Castillo"
+date: "6/8/2021"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: cerulean
+---
+---
+```{r setup, include=FALSE}
+# Instalar librerias ------------------------------------------------------------
+# install.packages("googledrive")
+# install.packages("rgee")
+library(googledrive)
+library(rgee)
+library(mapedit)
+library(tibble)
+library(sf)
+library(cptcity)
+library(tidyverse)
+library(sp)
+library(leaflet.extras2)
+library(raster)
+# Instalar rtools---------------------------------------------------------
+# rtools
+# Sys.which("make")
+# Paquete de rgee
+#ee_install()
+
+# Nos pedira si queremos instalar miniconda dareos Y
+# Creara un nuevo entorn Python
+# Nos pedira reiniciar la consola daremos 1
+# Instalar rtools---------------------------------------------------------
+# Iniciamos nuestra cuenta de Rgee
+ee_Initialize("gflorezc", drive = T)
+# ee_install()
+
+Map$setCenter(90.4125,23.8103, zoom = 13) 
+Map
+Bangladesh  <- getData('GADM', country='Bangladesh', level=2) %>%st_as_sf()  
+
+
+sentinel2 <- ee$ImageCollection("COPERNICUS/S2")
+Dhaka     <- subset(Bangladesh, NAME_2  == "Dhaka")
+#write_sf(Dhaka,"SHP/Dhaka.shp")
+Dhaka_ee <- st_read ("SHP/Dhaka.shp")%>%  sf_as_ee()        #Subimos nuestro capa de shp de 
+
+
+sentinel2 <- ee$ImageCollection("COPERNICUS/S2")
+Trueimage <-sentinel2$filterBounds(Dhaka_ee)$ 
+            filterDate("2018-01-01", "2018-04-30")$ 
+            sort("CLOUDY_PIXEL_PERCENTAGE", FALSE)$
+            mosaic()$
+            clip(Dhaka_ee)
+
+trueColor <- list(min= 0,max= 3000, bands= c("B4","B3", "B2"))
+
+Map$setCenter(90.4125,23.8103, zoom = 10)                                                           # Centramos el mapa para 
+Map$addLayer(Trueimage, visParams = trueColor, "Composicion natural")   
+
+
+# Llamamos al objeto creado
+NDWI      <- Trueimage$normalizedDifference(c("B3", "B8"))                       # Realizamos el indice de NDVI para yungay
+NDWIColor <- c("red", "yellow", "green", "blue")
+
+```
+Google Earth Engine en RStudio
+===================================== 
+
+Column {data-width=550}
+-----------------------------------------------------------------------
+
+### Mapa con Sentinel color natural distrito de Dhaka 
+
+```{r}
+Map$setCenter(90.4125,23.8103, zoom = 10)                                                           # Centramos el mapa para 
+Map$addLayer(Trueimage, visParams = trueColor, "Composicion natural")
+```
+
+Column {data-width=450}
+-----------------------------------------------------------------------
+### Mapa de Índice de agua de diferencia normalizada Sentinel-2 (NDWI) de Dhaka 
+
+```{r map }
+Map$setCenter(90.4125,23.8103, zoom = 10)                                         # Centramos el mapa para vizualizacion
+Map$addLayer(eeObject =NDWI , "NDWI Dhaka", visParams = list(                                   # LLamamos a NDWI y ponemos parametro de colores
+  min=-1,   max=0.5, palette= NDWIColor))                                         # utilizamos la paleta de colores de grass
+
+```
+
+
+
+
+
+
